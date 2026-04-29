@@ -10,6 +10,19 @@ const geometries = [];
 // Used only to draw the preview line.
 let mouse = null;
 
+const minGridStep = 0.01;
+const maxGridStep = 100;
+const initialVisibleUnits = 50;
+
+let camera = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  zoom: canvas.width / initialVisibleUnits
+};
+
+const minZoom = canvas.width / (maxGridStep * 50);
+const maxZoom = canvas.width / (minGridStep * 50);
+
 // Register canvas and button events.
 canvas.addEventListener("click", onClick);
 canvas.addEventListener("contextmenu", onRightClick);
@@ -63,13 +76,43 @@ function onMouseMove(e) {
 function getMousePos(e) {
   const rect = canvas.getBoundingClientRect();
 
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const screenX = (e.clientX - rect.left) * scaleX;
+  const screenY = (e.clientY - rect.top) * scaleY;
 
   return {
-    x: Math.round(x - rect.width / 2),
-    y: Math.round(-(y - rect.height / 2))
+    x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
+    y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom))
   };
+}
+
+function snapToGrid(value) {
+  const step = getGridStep();
+  return Math.round(value / step) * step;
+}
+
+canvas.addEventListener("wheel", onWheel);
+
+function onWheel(e) {
+  e.preventDefault();
+
+  const zoomFactor = 1.1;
+
+  if (e.deltaY < 0) {
+    camera.zoom *= zoomFactor;
+  } else {
+    camera.zoom /= zoomFactor;
+  }
+
+  camera.zoom = clamp(camera.zoom, minZoom, maxZoom);
+
+  draw();
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function draw() {
@@ -79,56 +122,77 @@ function draw() {
 
   ctx.save();
   // Move origin to center
-  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.translate(camera.x, camera.y);
+  ctx.scale(camera.zoom, -camera.zoom); 
 
-  // Invert Y axis
-  ctx.scale(1, -1);
-
-  drawGrid(25);
+  drawGrid(getGridStep());
   drawGeometries();
   drawPreview();
 
   ctx.restore();
 }
 
+function getGridStep() {
+  const targetPixels = 50;
+
+  let step = targetPixels / camera.zoom;
+
+  const power = Math.pow(10, Math.floor(Math.log10(step)));
+  const normalized = step / power;
+
+  if (normalized < 2) {
+    step = 1 * power;
+  } else if (normalized < 5) {
+    step = 2 * power;
+  } else {
+    step = 5 * power;
+  }
+
+  return clamp(step, 0.01, 100);
+}
+
 function drawGrid(step) {
-  const halfWidth = canvas.width / 2;
-  const halfHeight = canvas.height / 2;
+  const left = -camera.x / camera.zoom;
+  const right = (canvas.width - camera.x) / camera.zoom;
+  const bottom = -(canvas.height - camera.y) / camera.zoom;
+  const top = camera.y / camera.zoom;
+
+  const startX = Math.floor(left / step) * step;
+  const endX = Math.ceil(right / step) * step;
+
+  const startY = Math.floor(bottom / step) * step;
+  const endY = Math.ceil(top / step) * step;
 
   ctx.beginPath();
 
-  // Vertical lines
-  for (let x = -halfWidth; x <= halfWidth; x += step) {
-    ctx.moveTo(x, -halfHeight);
-    ctx.lineTo(x, halfHeight);
+  for (let x = startX; x <= endX; x += step) {
+    ctx.moveTo(x, bottom);
+    ctx.lineTo(x, top);
   }
 
-  // Horizontal lines
-  for (let y = -halfHeight; y <= halfHeight; y += step) {
-    ctx.moveTo(-halfWidth, y);
-    ctx.lineTo(halfWidth, y);
+  for (let y = startY; y <= endY; y += step) {
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
   }
 
   ctx.strokeStyle = "#e5e5e5";
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1 / camera.zoom;
   ctx.stroke();
 
-  // X axis
   ctx.beginPath();
-  ctx.moveTo(-halfWidth, 0);
-  ctx.lineTo(halfWidth, 0);
 
-  // Y axis
-  ctx.moveTo(0, -halfHeight);
-  ctx.lineTo(0, halfHeight);
+  ctx.moveTo(left, 0);
+  ctx.lineTo(right, 0);
+
+  ctx.moveTo(0, bottom);
+  ctx.lineTo(0, top);
 
   ctx.strokeStyle = "#999";
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.5 / camera.zoom;
   ctx.stroke();
 
-  // Restore default drawing style
   ctx.strokeStyle = "#000";
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1 / camera.zoom;
 }
 
 function clearCanvas() {
@@ -137,6 +201,7 @@ function clearCanvas() {
 }
 
 function drawGeometries() {
+  ctx.lineWidth = getScreenSize(2);
   for (const geometry of geometries) {
     if(geometry.type == "LINESTRING")
     {
@@ -149,6 +214,11 @@ function drawGeometries() {
 
     drawPoints(geometry.points)
   }
+  ctx.lineWidth = 2 / camera.zoom;
+}
+
+function getLineWidth(baseWidth) {
+  return Math.max(baseWidth / camera.zoom, baseWidth);
 }
 
 function drawLines(points) {
@@ -177,19 +247,23 @@ function drawPolygons(points) {
   }
 
   ctx.stroke();
-  ctx.fillStyle = "#aaa";
+  ctx.fillStyle = "#aaaaaa67";
   ctx.fill();
   ctx.fillStyle = "#000";
 }
 
 function drawPoints(points) {
-  for (let i = 0; i < points.length; i++) {
-    const point = points[i];
+  for (const point of points) {
+    const radius = getScreenSize(4);
 
-   ctx.beginPath();
-   ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-   ctx.fill();
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
+}
+
+function getScreenSize(value) {
+  return value / camera.zoom;
 }
 
 function drawPreview() {
@@ -241,10 +315,12 @@ function updateWkt() {
 }
 
 function format(p) {
-  // WKT coordinate format is: X Y
-  return `${p.x} ${p.y}`;
+  return `${formatNumber(p.x)} ${formatNumber(p.y)}`;
 }
 
+function formatNumber(value) {
+  return Number(value.toFixed(4)).toString();
+}
 function reset() {
   // Remove all stored points.
   geometries.length = 0;
@@ -287,4 +363,55 @@ function tryClosePolygon() {
 function finishGeometry()
 {
     currentGeometry = createNewGeometry();
+}
+
+let isPanning = false;
+let lastMouse = null;
+
+canvas.addEventListener("mousedown", onMouseDown);
+canvas.addEventListener("mousemove", onMouseMove);
+canvas.addEventListener("mouseup", onMouseUp);
+canvas.addEventListener("mouseleave", onMouseUp);
+canvas.addEventListener("wheel", onWheel);
+
+function onMouseDown(e) {
+  // 1 = middle mouse button
+  if (e.button !== 1) {
+    return;
+  }
+
+  e.preventDefault();
+
+  isPanning = true;
+  lastMouse = {
+    x: e.clientX,
+    y: e.clientY
+  };
+}
+
+function onMouseMove(e) {
+  if (isPanning) {
+    camera.x += e.clientX - lastMouse.x;
+    camera.y += e.clientY - lastMouse.y;
+
+    lastMouse = {
+      x: e.clientX,
+      y: e.clientY
+    };
+
+    draw();
+    return;
+  }
+
+  mouse = getMousePos(e);
+  draw();
+}
+
+function onMouseUp() {
+  isPanning = false;
+  lastMouse = null;
+}
+
+function roundCoordinate(value) {
+  return Number(value.toFixed(4));
 }
