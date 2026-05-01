@@ -29,6 +29,20 @@ canvas.addEventListener("contextmenu", onRightClick);
 canvas.addEventListener("mousemove", onMouseMove);
 clearBtn.addEventListener("click", reset);
 
+let isShiftPressed = false;
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Shift") {
+    isShiftPressed = true;
+  }
+});
+
+window.addEventListener("keyup", (e) => {
+  if (e.key === "Shift") {
+    isShiftPressed = false;
+  }
+});
+
 let showPreview = true;
 let currentGeometry = createNewGeometry();
 
@@ -82,10 +96,18 @@ function getMousePos(e) {
   const screenX = (e.clientX - rect.left) * scaleX;
   const screenY = (e.clientY - rect.top) * scaleY;
 
+  if (isShiftPressed)
+  {
+    return {
+      x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
+      y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom))
+    };
+  }
+
   return {
-    x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
-    y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom))
-  };
+      x: roundCoordinate((screenX - camera.x) / camera.zoom),
+      y: roundCoordinate(-(screenY - camera.y) / camera.zoom)
+    };
 }
 
 function snapToGrid(value) {
@@ -349,7 +371,7 @@ function tryClosePolygon() {
   const firstPoint = points[0];
   const lastPoint = points.at(-1);
 
-  if (getDistance(firstPoint, lastPoint) < 10) {
+  if (getDistance(firstPoint, lastPoint) < getGridStep()/4) {
     points.pop();
     points.push(firstPoint);
 
