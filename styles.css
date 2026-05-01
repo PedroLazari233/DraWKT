@@ -1,0 +1,37 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  height: 100vh;
+}
+
+.canvas-panel {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  height: 100vh;
+  background: white;
+}
+
+#canvas {
+  flex: 1;
+  background: white;
+  display: block;
+}
+
+.wkt-panel {
+  width: 400px;
+  padding: 16px;
+  border-left: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+}

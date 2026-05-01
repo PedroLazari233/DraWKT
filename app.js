@@ -29,6 +29,8 @@ canvas.addEventListener("contextmenu", onRightClick);
 canvas.addEventListener("mousemove", onMouseMove);
 clearBtn.addEventListener("click", reset);
 
+
+
 let isShiftPressed = false;
 
 window.addEventListener("keydown", (e) => {
@@ -437,3 +439,19 @@ function onMouseUp() {
 function roundCoordinate(value) {
   return Number(value.toFixed(4));
 }
+
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+
+  camera.x = canvas.width / 2;
+  camera.y = canvas.height / 2;
+
+  draw();
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
