@@ -1,6 +1,7 @@
 import { camera, initializeCamera } from "./camera/camera.js";
 import { getGridStep, drawGrid } from "./drawing/grid.js";
 import { clamp } from "./utils/math.js"
+import { isSnapEnabled } from "./interaction/keyboard.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -24,20 +25,6 @@ const maxZoom = canvas.width / (minGridStep * 50);
 canvas.addEventListener("click", onClick);
 canvas.addEventListener("contextmenu", onRightClick);
 clearBtn.addEventListener("click", reset);
-
-let isShiftPressed = false;
-
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Shift") {
-    isShiftPressed = true;
-  }
-});
-
-window.addEventListener("keyup", (e) => {
-  if (e.key === "Shift") {
-    isShiftPressed = false;
-  }
-});
 
 let showPreview = true;
 let currentGeometry = createNewGeometry();
@@ -83,7 +70,7 @@ function getMousePos(e) {
   const screenX = (e.clientX - rect.left) * scaleX;
   const screenY = (e.clientY - rect.top) * scaleY;
 
-  if (isShiftPressed)
+  if (isSnapEnabled)
   {
     return {
       x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
