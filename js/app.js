@@ -1,3 +1,7 @@
+import { camera, initializeCamera } from "./camera/camera.js";
+import { getGridStep, drawGrid } from "./drawing/grid.js";
+import { clamp } from "./utils/math.js"
+
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const wktOutput = document.getElementById("wktOutput");
@@ -12,13 +16,6 @@ let mouse = null;
 
 const minGridStep = 0.01;
 const maxGridStep = 100;
-const initialVisibleUnits = 50;
-
-let camera = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  zoom: canvas.width / initialVisibleUnits
-};
 
 const minZoom = canvas.width / (maxGridStep * 50);
 const maxZoom = canvas.width / (minGridStep * 50);
@@ -26,10 +23,7 @@ const maxZoom = canvas.width / (minGridStep * 50);
 // Register canvas and button events.
 canvas.addEventListener("click", onClick);
 canvas.addEventListener("contextmenu", onRightClick);
-canvas.addEventListener("mousemove", onMouseMove);
 clearBtn.addEventListener("click", reset);
-
-
 
 let isShiftPressed = false;
 
@@ -80,15 +74,6 @@ function onClick(e) {
   updateWkt();
 }
 
-function onMouseMove(e) {
-  // Store the current mouse position.
-  // This is used to draw a temporary preview line.
-  mouse = getMousePos(e);
-
-  // Redraw so the preview line follows the mouse.
-  draw();
-}
-
 function getMousePos(e) {
   const rect = canvas.getBoundingClientRect();
 
@@ -113,7 +98,7 @@ function getMousePos(e) {
 }
 
 function snapToGrid(value) {
-  const step = getGridStep();
+  const step = getGridStep(camera);
   return Math.round(value / step) * step;
 }
 
@@ -122,6 +107,7 @@ canvas.addEventListener("wheel", onWheel);
 function onWheel(e) {
   e.preventDefault();
 
+  const mousePosBeforeZoom = getMousePos(e)
   const zoomFactor = 1.1;
 
   if (e.deltaY < 0) {
@@ -132,11 +118,19 @@ function onWheel(e) {
 
   camera.zoom = clamp(camera.zoom, minZoom, maxZoom);
 
-  draw();
-}
+  const rect = canvas.getBoundingClientRect();
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const screenX = (e.clientX - rect.left) * scaleX;
+  const screenY = (e.clientY - rect.top) * scaleY;
+
+  camera.x = screenX - mousePosBeforeZoom.x * camera.zoom;
+  camera.y = screenY + mousePosBeforeZoom.y * camera.zoom;
+
+  mouse = getMousePos(e);
+  draw();
 }
 
 function draw() {
@@ -149,74 +143,11 @@ function draw() {
   ctx.translate(camera.x, camera.y);
   ctx.scale(camera.zoom, -camera.zoom); 
 
-  drawGrid(getGridStep());
+  drawGrid(getGridStep(camera), camera, canvas, ctx);
   drawGeometries();
   drawPreview();
 
   ctx.restore();
-}
-
-function getGridStep() {
-  const targetPixels = 50;
-
-  let step = targetPixels / camera.zoom;
-
-  const power = Math.pow(10, Math.floor(Math.log10(step)));
-  const normalized = step / power;
-
-  if (normalized < 2) {
-    step = 1 * power;
-  } else if (normalized < 5) {
-    step = 2 * power;
-  } else {
-    step = 5 * power;
-  }
-
-  return clamp(step, 0.01, 100);
-}
-
-function drawGrid(step) {
-  const left = -camera.x / camera.zoom;
-  const right = (canvas.width - camera.x) / camera.zoom;
-  const bottom = -(canvas.height - camera.y) / camera.zoom;
-  const top = camera.y / camera.zoom;
-
-  const startX = Math.floor(left / step) * step;
-  const endX = Math.ceil(right / step) * step;
-
-  const startY = Math.floor(bottom / step) * step;
-  const endY = Math.ceil(top / step) * step;
-
-  ctx.beginPath();
-
-  for (let x = startX; x <= endX; x += step) {
-    ctx.moveTo(x, bottom);
-    ctx.lineTo(x, top);
-  }
-
-  for (let y = startY; y <= endY; y += step) {
-    ctx.moveTo(left, y);
-    ctx.lineTo(right, y);
-  }
-
-  ctx.strokeStyle = "#e5e5e5";
-  ctx.lineWidth = 1 / camera.zoom;
-  ctx.stroke();
-
-  ctx.beginPath();
-
-  ctx.moveTo(left, 0);
-  ctx.lineTo(right, 0);
-
-  ctx.moveTo(0, bottom);
-  ctx.lineTo(0, top);
-
-  ctx.strokeStyle = "#999";
-  ctx.lineWidth = 1.5 / camera.zoom;
-  ctx.stroke();
-
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 1 / camera.zoom;
 }
 
 function clearCanvas() {
@@ -313,28 +244,24 @@ function drawPreview() {
 }
 
 function updateWkt() {
-  // No points means no geometry.
-  if (geometries.length == 0 || geometries[0].length == 0) {
-    wktOutput.value = "";
-    return;
-  }
-
   wktOutput.value = "";
 
-  for (let i = 0; i < geometries.length; i++) {
-    geometry = geometries[i];
-
-    if (geometry.points.length == 0) {
-        continue;
+  for (const geometry of geometries) {
+    if (geometry.points.length === 0) {
+      continue;
     }
-    
+
     if (geometry.type === "POLYGON") {
       wktOutput.value += `POLYGON ((${geometry.points.map(format).join(", ")}))\n`;
-    } else if (geometry.points.length === 1) {
-      wktOutput.value += `POINT (${format(geometry.points[0])})\n`;
-    } else {
-      wktOutput.value += `LINESTRING (${geometry.points.map(format).join(", ")})\n`;
+      continue;
     }
+
+    if (geometry.points.length === 1) {
+      wktOutput.value += `POINT (${format(geometry.points[0])})\n`;
+      continue;
+    }
+
+    wktOutput.value += `LINESTRING (${geometry.points.map(format).join(", ")})\n`;
   }
 }
 
@@ -373,7 +300,7 @@ function tryClosePolygon() {
   const firstPoint = points[0];
   const lastPoint = points.at(-1);
 
-  if (getDistance(firstPoint, lastPoint) < getGridStep()/4) {
+  if (getDistance(firstPoint, lastPoint) < getGridStep(camera)/4) {
     points.pop();
     points.push(firstPoint);
 
@@ -396,7 +323,6 @@ canvas.addEventListener("mousedown", onMouseDown);
 canvas.addEventListener("mousemove", onMouseMove);
 canvas.addEventListener("mouseup", onMouseUp);
 canvas.addEventListener("mouseleave", onMouseUp);
-canvas.addEventListener("wheel", onWheel);
 
 function onMouseDown(e) {
   // 1 = middle mouse button
@@ -415,8 +341,11 @@ function onMouseDown(e) {
 
 function onMouseMove(e) {
   if (isPanning) {
-    camera.x += e.clientX - lastMouse.x;
-    camera.y += e.clientY - lastMouse.y;
+    const dx = e.clientX - lastMouse.x;
+    const dy = e.clientY - lastMouse.y;
+
+    camera.x += dx;
+    camera.y += dy;
 
     lastMouse = {
       x: e.clientX,
@@ -446,8 +375,7 @@ function resizeCanvas() {
   canvas.width = rect.width;
   canvas.height = rect.height;
 
-  camera.x = canvas.width / 2;
-  camera.y = canvas.height / 2;
+  initializeCamera(canvas);
 
   draw();
 }
