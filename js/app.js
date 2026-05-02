@@ -1,7 +1,7 @@
 import { camera, initializeCamera } from "./camera/camera.js";
 import { getGridStep, drawGrid } from "./drawing/grid.js";
-import { clamp, roundCoordinate } from "./utils/math.js"
-import { isSnapEnabled } from "./interaction/keyboard.js";
+import { clamp } from "./utils/math.js"
+import { getMousePos } from "./interaction/mouse.js";
 import { createNewGeometry, createLineString, tryCreatePolygon } from "./geometry/factory.js";
 import { updateWkt } from "./wkt/wkt.js";
 import { drawGeometries } from "./drawing/geometry.js";
@@ -42,7 +42,7 @@ function onRightClick(e) {
 }
 
 function onClick(e) {
-  const p = getMousePos(e);
+  const p = getMousePos(e, canvas, camera);
 
   currentGeometry.points.push(p);
 
@@ -53,40 +53,12 @@ function onClick(e) {
   updateWkt(geometries);
 }
 
-function getMousePos(e) {
-  const rect = canvas.getBoundingClientRect();
-
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
-  const screenX = (e.clientX - rect.left) * scaleX;
-  const screenY = (e.clientY - rect.top) * scaleY;
-
-  if (isSnapEnabled)
-  {
-    return {
-      x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
-      y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom))
-    };
-  }
-
-  return {
-      x: roundCoordinate((screenX - camera.x) / camera.zoom),
-      y: roundCoordinate(-(screenY - camera.y) / camera.zoom)
-    };
-}
-
-function snapToGrid(value) {
-  const step = getGridStep(camera);
-  return Math.round(value / step) * step;
-}
-
 canvas.addEventListener("wheel", onWheel);
 
 function onWheel(e) {
   e.preventDefault();
 
-  const mousePosBeforeZoom = getMousePos(e)
+  const mousePosBeforeZoom = getMousePos(e, canvas, camera)
   const zoomFactor = 1.1;
 
   if (e.deltaY < 0) {
@@ -108,7 +80,7 @@ function onWheel(e) {
   camera.x = screenX - mousePosBeforeZoom.x * camera.zoom;
   camera.y = screenY + mousePosBeforeZoom.y * camera.zoom;
 
-  mouse = getMousePos(e);
+  mouse = getMousePos(e, canvas, camera);
   draw();
 }
 
@@ -229,7 +201,7 @@ function onMouseMove(e) {
     return;
   }
 
-  mouse = getMousePos(e);
+  mouse = getMousePos(e, canvas, camera);
   draw();
 }
 
