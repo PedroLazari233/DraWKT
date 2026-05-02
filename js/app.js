@@ -2,6 +2,7 @@ import { camera, initializeCamera } from "./camera/camera.js";
 import { getGridStep, drawGrid } from "./drawing/grid.js";
 import { clamp } from "./utils/math.js"
 import { isSnapEnabled } from "./interaction/keyboard.js";
+import { createNewGeometry } from "./geometry/factory.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -28,18 +29,7 @@ clearBtn.addEventListener("click", reset);
 
 let showPreview = true;
 let currentGeometry = createNewGeometry();
-
-function createNewGeometry() {
-  const geometry = {
-    type: "LINESTRING",
-    points: [],
-    isClosed: false
-  };
-
-  geometries.push(geometry);
-
-  return geometry;
-}
+geometries.push(currentGeometry);
 
 function onRightClick(e) {
   e.preventDefault(); // prevents browser menu from opening
@@ -55,6 +45,7 @@ function onClick(e) {
 
   currentGeometry.points.push(p);
 
+  tryCloseLineString();
   tryClosePolygon();
 
   draw();
@@ -212,7 +203,7 @@ function drawPreview() {
   if (!showPreview) return;
   if (!mouse) return;
   if (currentGeometry.points.length === 0) return;
-  if (currentGeometry.isClosed) return;
+  if (currentGeometry.type === "POLYGON") return;
 
   // Get the last clicked point.
   const last = currentGeometry.points.at(-1);
@@ -271,10 +262,21 @@ function reset() {
   updateWkt();
 
   currentGeometry = createNewGeometry();
+  geometries.push(currentGeometry);
 }
 
 function getDistance(pointA, pointB) {
   return Math.hypot(pointA.x - pointB.x, pointA.y - pointB.y);
+}
+
+function tryCloseLineString() {
+  const points = currentGeometry.points;
+
+  if (points.length < 2) {
+    return;
+  }
+
+  currentGeometry.type = "LINESTRING";
 }
 
 function tryClosePolygon() {
@@ -292,15 +294,16 @@ function tryClosePolygon() {
     points.push(firstPoint);
 
     currentGeometry.type = "POLYGON";
-    currentGeometry.isClosed = true;
 
     currentGeometry = createNewGeometry();
+    geometries.push(currentGeometry);
   }
 }
 
 function finishGeometry()
 {
     currentGeometry = createNewGeometry();
+    geometries.push(currentGeometry);
 }
 
 let isPanning = false;
