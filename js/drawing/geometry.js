@@ -1,5 +1,8 @@
 export function drawGeometries(ctx, geometries, camera) {
   ctx.lineWidth = getScreenSize(2, camera);
+  ctx.strokeStyle = "#000";
+  ctx.fillStyle = "#000";
+
   for (const geometry of geometries) {
     if(geometry.type == "LINESTRING")
     {
@@ -20,6 +23,7 @@ function drawLines(ctx, points) {
     return;
   }
 
+  ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
 
   for (let i = 1; i < points.length; i++) {
@@ -34,6 +38,8 @@ function drawPolygons(ctx, points) {
     return;
   }
 
+  ctx.beginPath();
+  ctx.fillStyle = "#000";
   ctx.moveTo(points[0].x, points[0].y);
 
   for (let i = 1; i < points.length; i++) {
@@ -43,13 +49,13 @@ function drawPolygons(ctx, points) {
   ctx.stroke();
   ctx.fillStyle = "#aaaaaa67";
   ctx.fill();
-  ctx.fillStyle = "#000";
 }
 
 function drawPoints(ctx, points, camera) {
   for (const point of points) {
     const radius = getScreenSize(4, camera);
 
+    ctx.fillStyle = "#000";
     ctx.beginPath();
     ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
     ctx.fill();
