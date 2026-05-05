@@ -47,6 +47,7 @@ export function drawGrid(step, camera, canvas, ctx) {
   ctx.lineWidth = 1 / camera.zoom;
   ctx.stroke();
 
+  ctx.strokeStyle = "#999";
   ctx.beginPath();
 
   ctx.moveTo(left, 0);
@@ -55,10 +56,10 @@ export function drawGrid(step, camera, canvas, ctx) {
   ctx.moveTo(0, bottom);
   ctx.lineTo(0, top);
 
-  ctx.strokeStyle = "#999";
+  
   ctx.lineWidth = 1.5 / camera.zoom;
   ctx.stroke();
 
-  ctx.strokeStyle = "#000";
+  // ctx.strokeStyle = "#000";
   ctx.lineWidth = 1 / camera.zoom;
 }

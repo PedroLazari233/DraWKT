@@ -1,10 +1,14 @@
 import { camera, initializeCamera } from "./camera/camera.js";
 import { getGridStep, drawGrid } from "./drawing/grid.js";
 import { clamp } from "./utils/math.js"
+import { getMousePos } from "./interaction/mouse.js";
+import { createNewGeometry, createLineString, tryCreatePolygon } from "./geometry/factory.js";
+import { updateWkt } from "./wkt/wkt.js";
+import { drawGeometries } from "./drawing/geometry.js";
+import { drawPreview } from "./drawing/preview.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-const wktOutput = document.getElementById("wktOutput");
 const clearBtn = document.getElementById("clearBtn");
 
 // Stores all clicked points in drawing order.
@@ -25,34 +29,9 @@ canvas.addEventListener("click", onClick);
 canvas.addEventListener("contextmenu", onRightClick);
 clearBtn.addEventListener("click", reset);
 
-let isShiftPressed = false;
-
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Shift") {
-    isShiftPressed = true;
-  }
-});
-
-window.addEventListener("keyup", (e) => {
-  if (e.key === "Shift") {
-    isShiftPressed = false;
-  }
-});
-
 let showPreview = true;
 let currentGeometry = createNewGeometry();
-
-function createNewGeometry() {
-  const geometry = {
-    type: "LINESTRING",
-    points: [],
-    isClosed: false
-  };
-
-  geometries.push(geometry);
-
-  return geometry;
-}
+geometries.push(currentGeometry);
 
 function onRightClick(e) {
   e.preventDefault(); // prevents browser menu from opening
@@ -64,42 +43,15 @@ function onRightClick(e) {
 }
 
 function onClick(e) {
-  const p = getMousePos(e);
+  const p = getMousePos(e, canvas, camera);
 
   currentGeometry.points.push(p);
 
+  tryCloseLineString();
   tryClosePolygon();
 
   draw();
-  updateWkt();
-}
-
-function getMousePos(e) {
-  const rect = canvas.getBoundingClientRect();
-
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
-  const screenX = (e.clientX - rect.left) * scaleX;
-  const screenY = (e.clientY - rect.top) * scaleY;
-
-  if (isShiftPressed)
-  {
-    return {
-      x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
-      y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom))
-    };
-  }
-
-  return {
-      x: roundCoordinate((screenX - camera.x) / camera.zoom),
-      y: roundCoordinate(-(screenY - camera.y) / camera.zoom)
-    };
-}
-
-function snapToGrid(value) {
-  const step = getGridStep(camera);
-  return Math.round(value / step) * step;
+  updateWkt(geometries);
 }
 
 canvas.addEventListener("wheel", onWheel);
@@ -107,7 +59,7 @@ canvas.addEventListener("wheel", onWheel);
 function onWheel(e) {
   e.preventDefault();
 
-  const mousePosBeforeZoom = getMousePos(e)
+  const mousePosBeforeZoom = getMousePos(e, canvas, camera)
   const zoomFactor = 1.1;
 
   if (e.deltaY < 0) {
@@ -129,7 +81,7 @@ function onWheel(e) {
   camera.x = screenX - mousePosBeforeZoom.x * camera.zoom;
   camera.y = screenY + mousePosBeforeZoom.y * camera.zoom;
 
-  mouse = getMousePos(e);
+  mouse = getMousePos(e, canvas, camera);
   draw();
 }
 
@@ -144,8 +96,8 @@ function draw() {
   ctx.scale(camera.zoom, -camera.zoom); 
 
   drawGrid(getGridStep(camera), camera, canvas, ctx);
-  drawGeometries();
-  drawPreview();
+  drawGeometries(ctx, geometries, camera);
+  drawPreview(ctx, showPreview, mouse, currentGeometry);
 
   ctx.restore();
 }
@@ -155,123 +107,6 @@ function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawGeometries() {
-  ctx.lineWidth = getScreenSize(2);
-  for (const geometry of geometries) {
-    if(geometry.type == "LINESTRING")
-    {
-        drawLines(geometry.points);
-    }
-    else if (geometry.type == "POLYGON")
-    {
-        drawPolygons(geometry.points)
-    }
-
-    drawPoints(geometry.points)
-  }
-  ctx.lineWidth = 2 / camera.zoom;
-}
-
-function getLineWidth(baseWidth) {
-  return Math.max(baseWidth / camera.zoom, baseWidth);
-}
-
-function drawLines(points) {
-  if (points.length < 2) {
-    return;
-  }
-
-  ctx.moveTo(points[0].x, points[0].y);
-
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
-
-  ctx.stroke();
-}
-
-function drawPolygons(points) {
-  if (points.length < 3) {
-    return;
-  }
-
-  ctx.moveTo(points[0].x, points[0].y);
-
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
-
-  ctx.stroke();
-  ctx.fillStyle = "#aaaaaa67";
-  ctx.fill();
-  ctx.fillStyle = "#000";
-}
-
-function drawPoints(points) {
-  for (const point of points) {
-    const radius = getScreenSize(4);
-
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function getScreenSize(value) {
-  return value / camera.zoom;
-}
-
-function drawPreview() {
-  if (!showPreview) return;
-  if (!mouse) return;
-  if (currentGeometry.points.length === 0) return;
-  if (currentGeometry.isClosed) return;
-
-  // Get the last clicked point.
-  const last = currentGeometry.points.at(-1);
-
-  // Draw a temporary line from the last point to the mouse.
-  ctx.beginPath();
-  ctx.moveTo(last.x, last.y);
-  ctx.lineTo(mouse.x, mouse.y);
-
-  // Use a lighter color for the preview.
-  ctx.strokeStyle = "#aaa";
-  ctx.stroke();
-
-  // Restore the default color for the real geometry.
-  ctx.strokeStyle = "#000";
-}
-
-function updateWkt() {
-  wktOutput.value = "";
-
-  for (const geometry of geometries) {
-    if (geometry.points.length === 0) {
-      continue;
-    }
-
-    if (geometry.type === "POLYGON") {
-      wktOutput.value += `POLYGON ((${geometry.points.map(format).join(", ")}))\n`;
-      continue;
-    }
-
-    if (geometry.points.length === 1) {
-      wktOutput.value += `POINT (${format(geometry.points[0])})\n`;
-      continue;
-    }
-
-    wktOutput.value += `LINESTRING (${geometry.points.map(format).join(", ")})\n`;
-  }
-}
-
-function format(p) {
-  return `${formatNumber(p.x)} ${formatNumber(p.y)}`;
-}
-
-function formatNumber(value) {
-  return Number(value.toFixed(4)).toString();
-}
 function reset() {
   // Remove all stored points.
   geometries.length = 0;
@@ -281,39 +116,28 @@ function reset() {
 
   // Clear the canvas and WKT output.
   draw();
-  updateWkt();
+  updateWkt(geometries);
 
   currentGeometry = createNewGeometry();
+  geometries.push(currentGeometry);
 }
 
-function getDistance(pointA, pointB) {
-  return Math.hypot(pointA.x - pointB.x, pointA.y - pointB.y);
+function tryCloseLineString() {
+  createLineString(currentGeometry);
 }
 
 function tryClosePolygon() {
-  const points = currentGeometry.points;
-
-  if (points.length < 4) {
-    return;
-  }
-
-  const firstPoint = points[0];
-  const lastPoint = points.at(-1);
-
-  if (getDistance(firstPoint, lastPoint) < getGridStep(camera)/4) {
-    points.pop();
-    points.push(firstPoint);
-
-    currentGeometry.type = "POLYGON";
-    currentGeometry.isClosed = true;
-
+  if(tryCreatePolygon(currentGeometry, getGridStep(camera)/4))
+  {
     currentGeometry = createNewGeometry();
+    geometries.push(currentGeometry);
   }
 }
 
 function finishGeometry()
 {
     currentGeometry = createNewGeometry();
+    geometries.push(currentGeometry);
 }
 
 let isPanning = false;
@@ -356,17 +180,13 @@ function onMouseMove(e) {
     return;
   }
 
-  mouse = getMousePos(e);
+  mouse = getMousePos(e, canvas, camera);
   draw();
 }
 
 function onMouseUp() {
   isPanning = false;
   lastMouse = null;
-}
-
-function roundCoordinate(value) {
-  return Number(value.toFixed(4));
 }
 
 function resizeCanvas() {
@@ -382,4 +202,3 @@ function resizeCanvas() {
 
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
-
