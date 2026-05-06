@@ -5,7 +5,7 @@ import { getMousePos } from "./interaction/mouse.js";
 import { createNewGeometry, createLineString, tryCreatePolygon } from "./geometry/factory.js";
 import { updateWkt } from "./wkt/wkt.js";
 import { drawGeometries } from "./drawing/geometry.js";
-import { drawPreview } from "./drawing/preview.js";
+import { drawPreview, drawAnglePreview } from "./drawing/preview.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -98,6 +98,7 @@ function draw() {
   drawGrid(getGridStep(camera), camera, canvas, ctx);
   drawGeometries(ctx, geometries, camera);
   drawPreview(ctx, showPreview, mouse, currentGeometry);
+  drawAnglePreview(ctx, currentGeometry, mouse, camera);
 
   ctx.restore();
 }
