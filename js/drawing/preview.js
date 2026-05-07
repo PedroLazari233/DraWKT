@@ -37,6 +37,7 @@ export function drawAnglePreview(ctx, currentGeometry, mouse, camera) {
   const angle = getAngleBetween(v1, v2);
 
   drawAngleLabel(ctx, b, `${angle.toFixed(1)}°`, camera);
+  drawAngleArc(ctx, a, b, c, camera);
 }
 
 function drawAngleLabel(ctx, point, text, camera) {
@@ -51,6 +52,25 @@ function drawAngleLabel(ctx, point, text, camera) {
   ctx.restore();
 }
 
+function drawAngleArc(ctx, a, b, c, camera) {
+  const radius = getScreenSize(16, camera);
+
+  const startAngle = getDirectionAngle(b, a);
+  const endAngle = getDirectionAngle(b, c);
+
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, radius, startAngle, endAngle, false);
+  ctx.strokeStyle = "#ff0000";
+  ctx.lineWidth = getScreenSize(2, camera);
+  ctx.stroke();
+
+  ctx.strokeStyle = "#000";
+}
+
 function getScreenSize(value, camera) {
   return value / camera.zoom;
+}
+
+function getDirectionAngle(from, to) {
+  return Math.atan2(to.y - from.y, to.x - from.x);
 }

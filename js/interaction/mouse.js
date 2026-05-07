@@ -14,8 +14,8 @@ export function getMousePos(e, canvas, camera) {
   if (isSnapEnabled)
   {
     return {
-      x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom)),
-      y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom))
+      x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom, camera)),
+      y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom, camera))
     };
   }
 
@@ -25,7 +25,7 @@ export function getMousePos(e, canvas, camera) {
     };
 }
 
-function snapToGrid(value) {
+function snapToGrid(value, camera) {
   const step = getGridStep(camera);
   return Math.round(value / step) * step;
 }
