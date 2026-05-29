@@ -68,7 +68,7 @@ function onRightClick(e) {
 }
 
 function onClick(e) {
-  const p = getMousePos(e, canvas, camera);
+  const p = getMousePos(e, geometries, canvas, camera);
   if (currentDrawingMode === DrawingMode.POLYGON) {
     currentGeometry.points.push(p);
     previewPolygon = createNewGeometry();
@@ -108,7 +108,7 @@ canvas.addEventListener("wheel", onWheel);
 function onWheel(e) {
   e.preventDefault();
 
-  const mousePosBeforeZoom = getMousePos(e, canvas, camera)
+  const mousePosBeforeZoom = getMousePos(e, geometries, canvas, camera)
   const zoomFactor = 1.1;
 
   if (e.deltaY < 0) {
@@ -130,7 +130,7 @@ function onWheel(e) {
   camera.x = screenX - mousePosBeforeZoom.x * camera.zoom;
   camera.y = screenY + mousePosBeforeZoom.y * camera.zoom;
 
-  mouse = getMousePos(e, canvas, camera);
+  mouse = getMousePos(e, geometries, canvas, camera);
   draw();
 }
 
@@ -256,9 +256,9 @@ function onMouseMove(e) {
 
     draw();
     return;
-  }
+  } 
 
-  mouse = getMousePos(e, canvas, camera);
+  mouse = getMousePos(e, geometries, canvas, camera);
 
   if (currentDrawingMode === DrawingMode.POLYGON) {
     tryClosePreviewPolygon();
