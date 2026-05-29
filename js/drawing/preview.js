@@ -36,11 +36,19 @@ export function drawAnglePreview(ctx, currentGeometry, mouse, camera) {
 
   const angle = getAngleBetween(v1, v2);
 
-  drawAngleLabel(ctx, b, `${angle.toFixed(1)}°`, camera);
+  drawText(ctx, b, `${angle.toFixed(1)}°`, camera);
   drawAngleArc(ctx, a, b, c, camera);
 }
 
-function drawAngleLabel(ctx, point, text, camera) {
+export function drawCircleRadiusPreview(ctx, currentCircle, mouse, camera) {
+  if (!currentCircle.isCenterInitialized || !mouse) {
+    return;
+  }
+
+  drawText(ctx, currentCircle.center, `${currentCircle.radius.toFixed(1)}m`, camera);
+}
+
+function drawText(ctx, point, text, camera) {
   const offset = getScreenSize(12, camera);
   ctx.save();
 

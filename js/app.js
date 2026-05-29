@@ -6,7 +6,7 @@ import { currentDrawingMode, DrawingMode, registerOnDrawingModeChanged } from ".
 import { createNewGeometry, createLineString, tryCreatePolygon, copyGeometry, createNewCircle, resetGeometry, createCirclePolygon, resetCircle } from "./geometry/factory.js";
 import { updateWkt } from "./wkt/wkt.js";
 import { drawGeometries } from "./drawing/geometry.js";
-import { drawPreview, drawAnglePreview } from "./drawing/preview.js";
+import { drawPreview, drawAnglePreview, drawCircleRadiusPreview } from "./drawing/preview.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -34,7 +34,7 @@ clearBtn.addEventListener("click", reset);
 
 let showPreview = true;
 let currentGeometry = createNewGeometry();
-let temporaryGeometry = createNewGeometry();
+let previewPolygon = createNewGeometry();
 let currentCircle = createNewCircle();
 geometries.push(currentGeometry);
 geometries.push(currentCircle);
@@ -62,7 +62,7 @@ function onClick(e) {
   const p = getMousePos(e, canvas, camera);
   if (currentDrawingMode === DrawingMode.POLYGON) {
     currentGeometry.points.push(p);
-    temporaryGeometry = createNewGeometry();
+    previewPolygon = createNewGeometry();
 
     tryCloseLineString();
     tryClosePolygon();
@@ -128,17 +128,20 @@ function draw() {
 
   drawGrid(getGridStep(camera), camera, canvas, ctx);
   drawGeometries(ctx, geometries, camera);
-  drawGeometries(ctx, [temporaryGeometry], camera);
+  drawGeometries(ctx, [previewPolygon], camera);
   drawPreview(ctx, showPreview, mouse, currentGeometry);
   drawAnglePreview(ctx, currentGeometry, mouse, camera);
+  drawCircleRadiusPreview(ctx, currentCircle, mouse, camera);
 
   ctx.restore();
 }
+
 
 function clearCanvas() {
   // Clear the entire canvas area.
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
+
 
 function reset() {
   // Remove all stored points.
@@ -155,9 +158,11 @@ function reset() {
   geometries.push(currentGeometry);
 }
 
+
 function tryCloseLineString() {
   createLineString(currentGeometry);
 }
+
 
 function tryClosePolygon() {
   if(tryCreatePolygon(currentGeometry, getGridStep(camera)/4))
@@ -167,13 +172,14 @@ function tryClosePolygon() {
   }
 }
 
-function tryCloseTemporaryPolygon() {
-  temporaryGeometry = copyGeometry(currentGeometry);
-  temporaryGeometry.points.push(mouse);
+
+function tryClosePreviewPolygon() {
+  previewPolygon = copyGeometry(currentGeometry);
+  previewPolygon.points.push(mouse);
   
-  if(!tryCreatePolygon(temporaryGeometry, getGridStep(camera)/4))
+  if(!tryCreatePolygon(previewPolygon, getGridStep(camera)/4))
   {
-    temporaryGeometry = createNewGeometry();
+    previewPolygon = createNewGeometry();
   }
 }
 
@@ -192,6 +198,7 @@ function finishGeometry()
     currentGeometry = createNewGeometry();
     geometries.push(currentGeometry);
 }
+
 
 let isPanning = false;
 let lastMouse = null;
@@ -236,7 +243,7 @@ function onMouseMove(e) {
   mouse = getMousePos(e, canvas, camera);
 
   if (currentDrawingMode === DrawingMode.POLYGON) {
-    tryCloseTemporaryPolygon();
+    tryClosePreviewPolygon();
   }
   else if (currentDrawingMode === DrawingMode.CIRCLE){
     updateCurrentCircleRadius();
