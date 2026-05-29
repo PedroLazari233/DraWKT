@@ -2,7 +2,7 @@ import { camera, initializeCamera } from "./camera/camera.js";
 import { getGridStep, drawGrid } from "./drawing/grid.js";
 import { clamp } from "./utils/math.js"
 import { getMousePos } from "./interaction/mouse.js";
-import { createNewGeometry, createLineString, tryCreatePolygon } from "./geometry/factory.js";
+import { createNewGeometry, createLineString, tryCreatePolygon, copyGeometry } from "./geometry/factory.js";
 import { updateWkt } from "./wkt/wkt.js";
 import { drawGeometries } from "./drawing/geometry.js";
 import { drawPreview, drawAnglePreview } from "./drawing/preview.js";
@@ -31,6 +31,7 @@ clearBtn.addEventListener("click", reset);
 
 let showPreview = true;
 let currentGeometry = createNewGeometry();
+let temporaryGeometry = createNewGeometry();
 geometries.push(currentGeometry);
 
 function onRightClick(e) {
@@ -52,6 +53,8 @@ function onClick(e) {
 
   draw();
   updateWkt(geometries);
+
+  temporaryGeometry = createNewGeometry();
 }
 
 canvas.addEventListener("wheel", onWheel);
@@ -97,6 +100,7 @@ function draw() {
 
   drawGrid(getGridStep(camera), camera, canvas, ctx);
   drawGeometries(ctx, geometries, camera);
+  drawGeometries(ctx, [temporaryGeometry], camera);
   drawPreview(ctx, showPreview, mouse, currentGeometry);
   drawAnglePreview(ctx, currentGeometry, mouse, camera);
 
@@ -134,6 +138,17 @@ function tryClosePolygon() {
     geometries.push(currentGeometry);
   }
 }
+
+function tryCloseTemporaryPolygon() {
+  temporaryGeometry = copyGeometry(currentGeometry);
+  temporaryGeometry.points.push(mouse);
+  
+  if(!tryCreatePolygon(temporaryGeometry, getGridStep(camera)/4))
+  {
+    temporaryGeometry = createNewGeometry();
+  }
+}
+
 
 function finishGeometry()
 {
@@ -182,6 +197,7 @@ function onMouseMove(e) {
   }
 
   mouse = getMousePos(e, canvas, camera);
+  tryCloseTemporaryPolygon();
   draw();
 }
 

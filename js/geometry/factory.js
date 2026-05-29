@@ -9,6 +9,15 @@ export function createNewGeometry() {
   return geometry;
 }
 
+export function copyGeometry(geometry) {
+  const newGeometry = {
+    type: geometry.type,
+    points: structuredClone(geometry.points)
+  }
+
+  return newGeometry;
+}
+
 export function createLineString(currentGeometry) {
   const points = currentGeometry.points;
 
