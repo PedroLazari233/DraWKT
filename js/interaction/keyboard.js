@@ -1,5 +1,6 @@
 export const DrawingMode = {
   POLYGON: "polygon",
+  PATH: "path",
   CIRCLE: "circle"
 }
 
@@ -23,7 +24,11 @@ window.addEventListener("keyup", (e) => {
     isSnapEnabled = false;
   }
   else if (e.key == "c") {
-    currentDrawingMode = currentDrawingMode === DrawingMode.POLYGON ? DrawingMode.CIRCLE : DrawingMode.POLYGON;
+    currentDrawingMode = currentDrawingMode === DrawingMode.CIRCLE ? DrawingMode.POLYGON : DrawingMode.CIRCLE;
+    onDrawingModeChangedCallback(currentDrawingMode);
+  }
+  else if (e.key == "p") {
+    currentDrawingMode = currentDrawingMode === DrawingMode.PATH ? DrawingMode.POLYGON : DrawingMode.PATH;
     onDrawingModeChangedCallback(currentDrawingMode);
   }
 });

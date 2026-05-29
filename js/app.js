@@ -3,7 +3,7 @@ import { getGridStep, drawGrid } from "./drawing/grid.js";
 import { clamp, getDistance } from "./utils/math.js"
 import { getMousePos } from "./interaction/mouse.js";
 import { currentDrawingMode, DrawingMode, registerOnDrawingModeChanged } from "./interaction/keyboard.js";
-import { createNewGeometry, createLineString, tryCreatePolygon, copyGeometry, createNewCircle, resetGeometry, createCirclePolygon, resetCircle } from "./geometry/factory.js";
+import { createNewGeometry, createLineString, tryCreatePolygon, copyGeometry, createNewCircle, resetGeometry, createCirclePolygon, resetCircle, extrudePolyline } from "./geometry/factory.js";
 import { updateWkt } from "./wkt/wkt.js";
 import { drawGeometries } from "./drawing/geometry.js";
 import { drawPreview, drawAnglePreview, drawCircleRadiusPreview } from "./drawing/preview.js";
@@ -48,13 +48,22 @@ function onDrawingModeChanged(newMode) {
 }
 
 function onRightClick(e) {
+  e.preventDefault(); // prevents browser menu from opening
   if (currentDrawingMode === DrawingMode.POLYGON) {
-    e.preventDefault(); // prevents browser menu from opening
-
     showPreview = !showPreview;
     finishGeometry();
     showPreview = !showPreview;
     draw();
+  }
+  else if (currentDrawingMode === DrawingMode.PATH)
+  {
+    showPreview = !showPreview;
+    currentGeometry.type = "POLYGON";
+    currentGeometry.points = extrudePolyline(currentGeometry.points, 3.4);
+    finishGeometry();
+    showPreview = !showPreview;
+    draw();
+    updateWkt(geometries);
   }
 }
 
@@ -66,6 +75,15 @@ function onClick(e) {
 
     tryCloseLineString();
     tryClosePolygon();
+
+    draw();
+    updateWkt(geometries);
+  }
+  else if (currentDrawingMode == DrawingMode.PATH) {
+    currentGeometry.points.push(p);
+    previewPolygon = createNewGeometry();
+
+    tryCloseLineString();
 
     draw();
     updateWkt(geometries);
