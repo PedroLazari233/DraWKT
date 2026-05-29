@@ -1,8 +1,9 @@
 import { camera, initializeCamera } from "./camera/camera.js";
 import { getGridStep, drawGrid } from "./drawing/grid.js";
-import { clamp } from "./utils/math.js"
+import { clamp, getDistance } from "./utils/math.js"
 import { getMousePos } from "./interaction/mouse.js";
-import { createNewGeometry, createLineString, tryCreatePolygon, copyGeometry } from "./geometry/factory.js";
+import { currentDrawingMode, DrawingMode, registerOnDrawingModeChanged } from "./interaction/keyboard.js";
+import { createNewGeometry, createLineString, tryCreatePolygon, copyGeometry, createNewCircle, resetGeometry, createCirclePolygon, resetCircle } from "./geometry/factory.js";
 import { updateWkt } from "./wkt/wkt.js";
 import { drawGeometries } from "./drawing/geometry.js";
 import { drawPreview, drawAnglePreview } from "./drawing/preview.js";
@@ -24,6 +25,8 @@ const maxGridStep = 100;
 const minZoom = canvas.width / (maxGridStep * 50);
 const maxZoom = canvas.width / (minGridStep * 50);
 
+registerOnDrawingModeChanged(onDrawingModeChanged);
+
 // Register canvas and button events.
 canvas.addEventListener("click", onClick);
 canvas.addEventListener("contextmenu", onRightClick);
@@ -32,29 +35,54 @@ clearBtn.addEventListener("click", reset);
 let showPreview = true;
 let currentGeometry = createNewGeometry();
 let temporaryGeometry = createNewGeometry();
+let currentCircle = createNewCircle();
 geometries.push(currentGeometry);
+geometries.push(currentCircle);
+
+function onDrawingModeChanged(newMode) {
+  console.log(newMode);
+  resetGeometry(currentGeometry);
+  resetCircle(currentCircle);
+  draw();
+  updateWkt(geometries);
+}
 
 function onRightClick(e) {
-  e.preventDefault(); // prevents browser menu from opening
+  if (currentDrawingMode === DrawingMode.POLYGON) {
+    e.preventDefault(); // prevents browser menu from opening
 
-  showPreview = !showPreview;
-  finishGeometry();
-  showPreview = !showPreview;
-  draw();
+    showPreview = !showPreview;
+    finishGeometry();
+    showPreview = !showPreview;
+    draw();
+  }
 }
 
 function onClick(e) {
   const p = getMousePos(e, canvas, camera);
+  if (currentDrawingMode === DrawingMode.POLYGON) {
+    currentGeometry.points.push(p);
+    temporaryGeometry = createNewGeometry();
 
-  currentGeometry.points.push(p);
+    tryCloseLineString();
+    tryClosePolygon();
 
-  tryCloseLineString();
-  tryClosePolygon();
+    draw();
+    updateWkt(geometries);
+  }
+  else if (currentDrawingMode === DrawingMode.CIRCLE) {
+    if (currentCircle.isCenterInitialized) {
+      currentCircle = createNewCircle();
+      geometries.push(currentCircle);    
 
-  draw();
-  updateWkt(geometries);
-
-  temporaryGeometry = createNewGeometry();
+      draw();
+      updateWkt(geometries);
+    }
+    else {
+      currentCircle.center = p;
+      currentCircle.isCenterInitialized = true;
+    }
+  }
 }
 
 canvas.addEventListener("wheel", onWheel);
@@ -150,6 +178,15 @@ function tryCloseTemporaryPolygon() {
 }
 
 
+function updateCurrentCircleRadius() {
+  if (currentCircle.isCenterInitialized)
+  {
+    currentCircle.radius = getDistance(currentCircle.center, mouse);
+    createCirclePolygon(currentCircle);
+  }
+}
+
+
 function finishGeometry()
 {
     currentGeometry = createNewGeometry();
@@ -197,7 +234,13 @@ function onMouseMove(e) {
   }
 
   mouse = getMousePos(e, canvas, camera);
-  tryCloseTemporaryPolygon();
+
+  if (currentDrawingMode === DrawingMode.POLYGON) {
+    tryCloseTemporaryPolygon();
+  }
+  else if (currentDrawingMode === DrawingMode.CIRCLE){
+    updateCurrentCircleRadius();
+  }
   draw();
 }
 
