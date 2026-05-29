@@ -45,7 +45,7 @@ export function drawCircleRadiusPreview(ctx, currentCircle, mouse, camera) {
     return;
   }
 
-  drawText(ctx, currentCircle.center, `${currentCircle.radius.toFixed(1)}m`, camera);
+  drawText(ctx, currentCircle.center, `${currentCircle.radius.toFixed(2)}m`, camera);
 }
 
 function drawText(ctx, point, text, camera) {

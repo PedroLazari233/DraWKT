@@ -13,15 +13,10 @@ export function registerOnDrawingModeChanged(callback) {
   onDrawingModeChangedCallback = callback;
 }
 
-window.addEventListener("keydown", (e) => {
-  if (e.key === "g") {
-    isSnapEnabled = true;
-  }
-});
-
 window.addEventListener("keyup", (e) => {
   if (e.key === "g") {
-    isSnapEnabled = false;
+    isSnapEnabled = !isSnapEnabled;
+    console.log('Snapping: ', isSnapEnabled);
   }
   else if (e.key == "c") {
     currentDrawingMode = currentDrawingMode === DrawingMode.CIRCLE ? DrawingMode.POLYGON : DrawingMode.CIRCLE;
