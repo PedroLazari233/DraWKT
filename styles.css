@@ -44,3 +44,9 @@ html, body {
   display: flex;
   flex-direction: column;
 }
+
+.toolbar button:hover,
+.toolbar button.active {
+  background: #ddd;
+  border: 1px solid #555;
+}

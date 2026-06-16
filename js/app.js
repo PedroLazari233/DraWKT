@@ -49,7 +49,7 @@ function onDrawingModeChanged(newMode) {
 
 function onRightClick(e) {
   e.preventDefault(); // prevents browser menu from opening
-  if (currentDrawingMode === DrawingMode.POLYGON) {
+  if (currentDrawingMode === DrawingMode.STANDART) {
     showPreview = !showPreview;
     finishGeometry();
     showPreview = !showPreview;
@@ -69,7 +69,7 @@ function onRightClick(e) {
 
 function onClick(e) {
   const p = getMousePos(e, geometries, canvas, camera);
-  if (currentDrawingMode === DrawingMode.POLYGON) {
+  if (currentDrawingMode === DrawingMode.STANDART) {
     currentGeometry.points.push(p);
     previewPolygon = createNewGeometry();
 
@@ -260,7 +260,7 @@ function onMouseMove(e) {
 
   mouse = getMousePos(e, geometries, canvas, camera);
 
-  if (currentDrawingMode === DrawingMode.POLYGON) {
+  if (currentDrawingMode === DrawingMode.STANDART) {
     tryClosePreviewPolygon();
   }
   else if (currentDrawingMode === DrawingMode.CIRCLE){

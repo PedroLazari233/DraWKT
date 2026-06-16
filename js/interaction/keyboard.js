@@ -1,11 +1,11 @@
 export const DrawingMode = {
-  POLYGON: "polygon",
+  STANDART: "standart",
   PATH: "path",
   CIRCLE: "circle"
 }
 
 export let isSnapEnabled = false;
-export let currentDrawingMode = DrawingMode.POLYGON;
+export let currentDrawingMode = DrawingMode.STANDART;
 
 let onDrawingModeChangedCallback = null;
 
@@ -13,18 +13,41 @@ export function registerOnDrawingModeChanged(callback) {
   onDrawingModeChangedCallback = callback;
 }
 
-window.addEventListener("keyup", (e) => {
-  if (e.key === "g") {
-    isSnapEnabled = !isSnapEnabled;
-    console.log('Snapping: ', isSnapEnabled);
-  }
-  else if (e.key == "c") {
-    currentDrawingMode = currentDrawingMode === DrawingMode.CIRCLE ? DrawingMode.POLYGON : DrawingMode.CIRCLE;
+const buttonsByMode = {
+  circle: document.getElementById("circleModeBtn"),
+  path: document.getElementById("pathModeBtn"),
+  standart: document.getElementById("standartModeBtn"),
+};
+
+buttonsByMode.circle.addEventListener("click", () => setDrawMode(DrawingMode.CIRCLE));
+buttonsByMode.path.addEventListener("click", () => setDrawMode(DrawingMode.PATH));
+buttonsByMode.standart.addEventListener("click", () => setDrawMode(DrawingMode.STANDART));
+
+function setDrawMode(mode) {
+  Object.values(buttonsByMode).forEach(button => {
+    button.classList.remove("active");
+  });
+
+  buttonsByMode[mode].classList.add("active");
+
+  currentDrawingMode = mode;
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.shiftKey && event.key.toLowerCase() === "c") {
+    setDrawMode(DrawingMode.CIRCLE);
     onDrawingModeChangedCallback(currentDrawingMode);
   }
-  else if (e.key == "p") {
-    currentDrawingMode = currentDrawingMode === DrawingMode.PATH ? DrawingMode.POLYGON : DrawingMode.PATH;
+  else if (event.key.toLowerCase() === "g") {
+    isSnapEnabled = !isSnapEnabled;
+    console.log("Snapping:", isSnapEnabled);
+  }
+  else if (event.key.toLowerCase() === "p") {
+    setDrawMode(DrawingMode.PATH);
+    onDrawingModeChangedCallback(currentDrawingMode);
+  }
+  else if (event.key.toLowerCase() === "s") {
+    setDrawMode(DrawingMode.STANDART);
     onDrawingModeChangedCallback(currentDrawingMode);
   }
 });
-
