@@ -14,11 +14,30 @@
     </section>
 
     <section class="wkt-panel">
-      <h2>WKT</h2>
-      <textarea id="wktOutput" readonly></textarea>
-      <button id="clearBtn">Clear</button>
+      <div class="toolbar">
+        <section>
+          <h3>
+            Draw mode
+          </h3>
+          <button id="standartModeBtn">Standart</button>
+          <button id="circleModeBtn">Circle</button>
+          <button id="pathModeBtn">Path</button>
+        </section>
+        <section>
+          <h3>
+            Snap mode
+          </h3>
+          <button id="snapToGridModeBtn">Grid</button>
+          <button id="snapToVertexModeBtn">Vertex</button>
+        </section>
+      </div>
+      
+      <div class="output">
+        <h2>WKT</h2>
+        <textarea id="wktOutput" readonly></textarea>
+        <button id="clearBtn">Clear</button>
+      </div>
     </section>
-
   </main>
 
   <script type="module" src="js/app.js"></script>
