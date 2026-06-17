@@ -47,6 +47,9 @@ function onDrawingModeChanged(newMode) {
   updateWkt(geometries);
 }
 
+let isChoosingPathOffset = false;
+let pathBasePoints = null;
+
 function onRightClick(e) {
   e.preventDefault(); // prevents browser menu from opening
   if (currentDrawingMode === DrawingMode.STANDART) {
@@ -55,16 +58,115 @@ function onRightClick(e) {
     showPreview = !showPreview;
     draw();
   }
-  else if (currentDrawingMode === DrawingMode.PATH)
+  else if (currentDrawingMode === DrawingMode.PATH && currentGeometry.points.length > 0)
   {
-    showPreview = !showPreview;
-    currentGeometry.type = "POLYGON";
-    currentGeometry.points = extrudePolyline(currentGeometry.points, 3.4);
-    finishGeometry();
-    showPreview = !showPreview;
-    draw();
-    updateWkt(geometries);
+    if (!isChoosingPathOffset) {
+      isChoosingPathOffset = true;
+      pathBasePoints = [...currentGeometry.points];
+
+      showPreview = !showPreview;
+    } else {
+      isChoosingPathOffset = false;
+
+      finishGeometry();
+
+      pathBasePoints = null;
+      showPreview = !showPreview;
+      draw();
+      updateWkt(geometries);
+    }
   }
+}
+
+window.addEventListener("mousemove", (e) => {
+  if (isChoosingPathOffset && currentDrawingMode === DrawingMode.PATH) {
+    const mousePoint = getMousePos(e, geometries, canvas, camera);
+
+    const offset = getSignedDistanceFromPolyline(pathBasePoints, mousePoint);
+
+    currentGeometry.type = "POLYGON";
+    currentGeometry.points = extrudePolyline(pathBasePoints, offset);
+
+    draw();
+  }
+});
+
+function getSignedDistanceFromPolyline(points, mousePoint) {
+  if (points.length < 2) {
+    return 0;
+  }
+
+  const segmentStart = points[0];
+  const segmentEnd = points[points.length - 1];
+
+  return getSignedDistanceFromSegment(
+    mousePoint,
+    segmentStart,
+    segmentEnd
+  ).distance;
+}
+
+function getSignedDistanceFromSegment(point, segmentStart, segmentEnd) {
+  const dx = segmentEnd.x - segmentStart.x;
+  const dy = segmentEnd.y - segmentStart.y;
+
+  const length = Math.hypot(dx, dy);
+
+  if (length === 0) {
+    return { distance: 0 };
+  }
+
+  const normal = {
+    x: -dy / length,
+    y: dx / length
+  };
+
+  const vx = point.x - segmentStart.x;
+  const vy = point.y - segmentStart.y;
+
+  const signedDistance = vx * normal.x + vy * normal.y;
+
+  return {
+    distance: signedDistance
+  };
+}
+
+function getDistanceFromPolyline(points, mousePoint) {
+  let minDistance = Infinity;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const distance = getDistanceFromSegment(
+      mousePoint,
+      points[i],
+      points[i + 1]
+    );
+
+    minDistance = Math.min(minDistance, distance);
+  }
+
+  return minDistance;
+}
+
+function getDistanceFromSegment(point, segmentStart, segmentEnd) {
+  const dx = segmentEnd.x - segmentStart.x;
+  const dy = segmentEnd.y - segmentStart.y;
+
+  const lengthSquared = dx * dx + dy * dy;
+
+  if (lengthSquared === 0) {
+    return getDistance(point, segmentStart);
+  }
+
+  const t = Math.max(0, Math.min(1,
+    ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) / lengthSquared
+  ));
+
+  const projection = {
+    x: segmentStart.x + t * dx,
+    y: segmentStart.y + t * dy
+  };
+
+  return getDistance(point, projection);
 }
 
 function onClick(e) {
@@ -79,7 +181,7 @@ function onClick(e) {
     draw();
     updateWkt(geometries);
   }
-  else if (currentDrawingMode == DrawingMode.PATH) {
+  else if (currentDrawingMode == DrawingMode.PATH && !isChoosingPathOffset) {
     currentGeometry.points.push(p);
     previewPolygon = createNewGeometry();
 
