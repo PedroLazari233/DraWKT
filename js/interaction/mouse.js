@@ -1,4 +1,4 @@
-import { isSnapEnabled } from "../interaction/keyboard.js";
+import { isSnapToGridEnabled, isSnapToVertexEnabled } from "../interaction/keyboard.js";
 import { getDistance, roundCoordinate } from "../utils/math.js"
 import { getGridStep } from "../drawing/grid.js";
 
@@ -10,26 +10,32 @@ export function getMousePos(e, geometries, canvas, camera) {
 
   const screenX = (e.clientX - rect.left) * scaleX;
   const screenY = (e.clientY - rect.top) * scaleY;
-  const screenPos = { 
-    x: roundCoordinate((screenX - camera.x) / camera.zoom), 
-    y: roundCoordinate(-(screenY - camera.y) / camera.zoom) 
+
+  const x = (screenX - camera.x) / camera.zoom;
+  const y = -(screenY - camera.y) / camera.zoom;
+
+  const mousePos = {
+    x: roundCoordinate(x),
+    y: roundCoordinate(y)
   };
 
-  if (isSnapEnabled)
-  {
-    const threshold = getGridStep(camera)/4;
-    const geometrySnap = trySnapToGeometries(screenPos, geometries, threshold);
+  if (isSnapToVertexEnabled) {
+    const threshold = getGridStep(camera) / 4;
+    const geometrySnap = trySnapToGeometries(mousePos, geometries, threshold);
+
     if (geometrySnap !== null) {
       return geometrySnap;
     }
-    
+  }
+
+  if (isSnapToGridEnabled) {
     return {
-      x: roundCoordinate(snapToGrid((screenX - camera.x) / camera.zoom, camera)),
-      y: roundCoordinate(snapToGrid(-(screenY - camera.y) / camera.zoom, camera))
+      x: roundCoordinate(snapToGrid(x, camera)),
+      y: roundCoordinate(snapToGrid(y, camera))
     };
   }
 
-  return screenPos;
+  return mousePos;
 }
 
 function snapToGrid(value, camera) {

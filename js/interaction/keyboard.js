@@ -4,7 +4,8 @@ export const DrawingMode = {
   CIRCLE: "circle"
 }
 
-export let isSnapEnabled = false;
+export let isSnapToGridEnabled = false;
+export let isSnapToVertexEnabled = false;
 export let currentDrawingMode = DrawingMode.STANDART;
 
 let onDrawingModeChangedCallback = null;
@@ -33,13 +34,13 @@ function setHover(mode) {
 }
 
 snapMode.vertex.addEventListener("click", () => {
-  setHover("vertex");
-  isSnapEnabled = !isSnapEnabled;
+  isSnapToVertexEnabled = !isSnapToVertexEnabled;
+  snapMode.vertex.classList.toggle("active", isSnapToVertexEnabled);
 });
 
 snapMode.grid.addEventListener("click", () => {
-  setHover("grid");
-  isSnapEnabled = !isSnapEnabled;
+  isSnapToGridEnabled = !isSnapToGridEnabled;
+  snapMode.grid.classList.toggle("active", isSnapToGridEnabled);
 });
 
 buttonsByMode.circle.addEventListener("click", () => setDrawMode(DrawingMode.CIRCLE));
@@ -61,7 +62,12 @@ window.addEventListener("keydown", (event) => {
     onDrawingModeChangedCallback(currentDrawingMode);
   }
   else if (event.shiftKey && event.key.toLowerCase() === "g") {
-    isSnapEnabled = !isSnapEnabled;
+    isSnapToGridEnabled = !isSnapToGridEnabled;
+    snapMode.grid.classList.toggle("active", isSnapToGridEnabled);
+  }
+  else if (event.shiftKey && event.key.toLowerCase() === "v") {
+    isSnapToVertexEnabled = !isSnapToVertexEnabled;
+    snapMode.vertex.classList.toggle("active", isSnapToVertexEnabled);
   }
   else if (event.shiftKey && event.key.toLowerCase() === "p") {
     setDrawMode(DrawingMode.PATH);
