@@ -19,18 +19,40 @@ const buttonsByMode = {
   standart: document.getElementById("standartModeBtn"),
 };
 
+const snapMode = {
+  vertex: document.getElementById("snapToVertexModeBtn"),
+  grid: document.getElementById("snapToGridModeBtn"),
+};
+
+function setHover(mode) {
+  Object.values(snapMode).forEach(button => {
+    button.classList.remove("active");
+  });
+
+  snapMode[mode].classList.add("active");
+}
+
+snapMode.vertex.addEventListener("click", () => {
+  setHover("vertex");
+  isSnapEnabled = !isSnapEnabled;
+});
+
+snapMode.grid.addEventListener("click", () => {
+  setHover("grid");
+  isSnapEnabled = !isSnapEnabled;
+});
+
 buttonsByMode.circle.addEventListener("click", () => setDrawMode(DrawingMode.CIRCLE));
 buttonsByMode.path.addEventListener("click", () => setDrawMode(DrawingMode.PATH));
 buttonsByMode.standart.addEventListener("click", () => setDrawMode(DrawingMode.STANDART));
 
 function setDrawMode(mode) {
+  currentDrawingMode = mode;
   Object.values(buttonsByMode).forEach(button => {
     button.classList.remove("active");
   });
 
   buttonsByMode[mode].classList.add("active");
-
-  currentDrawingMode = mode;
 }
 
 window.addEventListener("keydown", (event) => {
@@ -38,15 +60,14 @@ window.addEventListener("keydown", (event) => {
     setDrawMode(DrawingMode.CIRCLE);
     onDrawingModeChangedCallback(currentDrawingMode);
   }
-  else if (event.key.toLowerCase() === "g") {
+  else if (event.shiftKey && event.key.toLowerCase() === "g") {
     isSnapEnabled = !isSnapEnabled;
-    console.log("Snapping:", isSnapEnabled);
   }
-  else if (event.key.toLowerCase() === "p") {
+  else if (event.shiftKey && event.key.toLowerCase() === "p") {
     setDrawMode(DrawingMode.PATH);
     onDrawingModeChangedCallback(currentDrawingMode);
   }
-  else if (event.key.toLowerCase() === "s") {
+  else if (event.shiftKey && event.key.toLowerCase() === "s") {
     setDrawMode(DrawingMode.STANDART);
     onDrawingModeChangedCallback(currentDrawingMode);
   }
