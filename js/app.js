@@ -96,7 +96,7 @@ function getSignedDistanceFromPolyline(points, mousePoint) {
     return 0;
   }
 
-  const segmentStart = points[0];
+  const segmentStart = points[points.length - 2];
   const segmentEnd = points[points.length - 1];
 
   return getSignedDistanceFromSegment(
