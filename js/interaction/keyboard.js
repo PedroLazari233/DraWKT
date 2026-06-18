@@ -6,7 +6,8 @@ export const DrawingMode = {
 
 export let isSnapToGridEnabled = false;
 export let isSnapToVertexEnabled = false;
-export let currentDrawingMode = DrawingMode.STANDART;
+export let currentDrawingMode;
+
 
 let onDrawingModeChangedCallback = null;
 
@@ -19,6 +20,8 @@ const buttonsByMode = {
   path: document.getElementById("pathModeBtn"),
   standart: document.getElementById("standartModeBtn"),
 };
+
+setDrawMode(DrawingMode.STANDART);
 
 const snapMode = {
   vertex: document.getElementById("snapToVertexModeBtn"),
